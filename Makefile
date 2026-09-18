@@ -29,10 +29,10 @@ test_enviroment:
 	$(POETRY_RUN) pytest --version
 
 install:
-	cd $(PROJECT_DIR) && $(POETRY) install
+	$(POETRY_RUN) install
 
 test:
-	cd $(PROJECT_DIR) && $(POETRY) run pytest
+	$(POETRY_RUN) pytest
 
 build:
 	docker compose build
