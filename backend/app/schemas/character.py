@@ -25,3 +25,5 @@ class CharacterResponse(BaseModel):
     race: str
     character_class: str
     level: int
+
+model_config = {"from_attributes": True}
