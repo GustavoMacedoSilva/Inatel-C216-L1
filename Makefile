@@ -1,10 +1,6 @@
-.PHONY: hello help test_enviroment build up down restart logs test lint format clean
+.PHONY: hello help test_enviroment build up down restart logs test lint format clean install
 
 POETRY_RUN := poetry -C backend run
-POETRY := poetry
-
-
-PROJECT_DIR := backend
 
 help:
 	@echo "Comandos:"
@@ -18,6 +14,7 @@ help:
 	@echo "restart" - restarta o docker
 	@echo "logs" - pega os logs do docker
 	@echo "clean" - derruba e limpa o docker
+	@echo "lint" - verifica problemas de estilo com Ruff
 	
 
 hello:
@@ -29,10 +26,13 @@ test_enviroment:
 	$(POETRY_RUN) pytest --version
 
 install:
-	$(POETRY_RUN) install
+	poetry -C backend install --no-interaction
 
 test:
-	$(POETRY_RUN) pytest
+	docker compose run --rm api pytest
+
+lint:
+	$(POETRY_RUN) ruff check .
 
 build:
 	docker compose build
@@ -51,4 +51,4 @@ logs:
 	docker compose logs -f
 
 clean:
-	docker compose down -v
+	docker compose down
