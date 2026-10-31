@@ -1,77 +1,52 @@
+from sqlalchemy.orm import Session
+
+from app.repositories import character_repository
 from app.schemas.character import CharacterCreate, CharacterLevelUpdate, CharacterUpdate
 
 
-characters = []
-next_id = 1
+def get_all_characters(db: Session, race: str | None = None):
+    return character_repository.get_all(db, race)
 
 
-def get_all_characters(race: str | None = None):
-    if race is None:
-        return characters
-
-    return [
-        character
-        for character in characters
-        if character["race"].lower() == race.lower()
-    ]
+def get_character(db: Session, character_id: int):
+    return character_repository.get_by_id(db, character_id)
 
 
-def get_character(character_id: int):
-    for character in characters:
-        if character["id"] == character_id:
-            return character
-
-    return None
-
-
-def create_character(character_data: CharacterCreate):
-    global next_id
-
-    character = {
-        "id": next_id,
-        **character_data.model_dump(),
-    }
-
-    characters.append(character)
-    next_id += 1
-
-    return character
+def create_character(db: Session, data: CharacterCreate):
+    return character_repository.create(db, data)
 
 
 def replace_character(
+    db: Session,
     character_id: int,
-    character_data: CharacterUpdate,
+    data: CharacterUpdate,
 ):
-    character = get_character(character_id)
+    character = character_repository.get_by_id(db, character_id)
 
     if character is None:
         return None
 
-    character.update(character_data.model_dump())
-
-    return character
+    return character_repository.replace(db, character, data)
 
 
 def update_character_level(
+    db: Session,
     character_id: int,
-    level_data: CharacterLevelUpdate,
+    data: CharacterLevelUpdate,
 ):
-    character = get_character(character_id)
+    character = character_repository.get_by_id(db, character_id)
 
     if character is None:
         return None
 
-    character["level"] = level_data.level
-
-    return character
+    return character_repository.update_level(db, character, data.level)
 
 
-def delete_character(character_id: int):
-    character = get_character(character_id)
+def delete_character(db: Session, character_id: int):
+    character = character_repository.get_by_id(db, character_id)
 
     if character is None:
         return False
 
-    characters.remove(character)
-
+    character_repository.delete(db, character)
     return True

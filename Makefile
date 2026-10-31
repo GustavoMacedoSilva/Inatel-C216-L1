@@ -1,10 +1,8 @@
-.PHONY: hello help test_enviroment build up down restart logs test lint format clean
+.PHONY: hello help test_enviroment build up down restart logs test lint format clean install
 
 POETRY_RUN := poetry -C backend run
-POETRY := poetry
-
-
-PROJECT_DIR := backend
+FRONTEND_DIR := frontend
+NPM := npm  --prefix $(FRONTEND_DIR)
 
 help:
 	@echo "Comandos:"
@@ -18,7 +16,17 @@ help:
 	@echo "restart" - restarta o docker
 	@echo "logs" - pega os logs do docker
 	@echo "clean" - derruba e limpa o docker
-	
+	@echo "lint" - verifica problemas de estilo com Ruff
+	@echo "make frontend-install - instala dependencias do frontend"
+	@echo "make frontend-dev - inicia servidor React"
+	@echo "make lint-front - verifica codigo"
+	@echo "make format-front - formata codigo"
+	@echo "make format-check-front - verifica formatacao"
+	@echo "make test-front - executa todos os testes"
+	@echo "make test-watch-front - executa Vitest em watch mode"
+	@echo "make test-unit-front - executa testes unitarios"
+	@echo "make test-integration-front - executa testes de integracao"
+	@echo "make test-e2e-front - executa testes Playwright"
 
 hello:
 	@echo "Ola, Sistemas Distribuidos!"
@@ -29,10 +37,13 @@ test_enviroment:
 	$(POETRY_RUN) pytest --version
 
 install:
-	$(POETRY_RUN) install
+	poetry -C backend install --no-interaction
 
 test:
-	$(POETRY_RUN) pytest
+	docker compose run --rm api pytest
+
+lint:
+	$(POETRY_RUN) ruff check .
 
 build:
 	docker compose build
@@ -51,4 +62,35 @@ logs:
 	docker compose logs -f
 
 clean:
-	docker compose down -v
+	docker compose down
+
+
+frontend-install:
+	$(NPM) install
+
+frontend-dev:
+	$(NPM) run dev
+
+lint-front:
+	$(NPM) run lint
+
+format-front:
+	$(NPM) run format
+
+format-check-front:
+	$(NPM) run format:check
+
+test-front:
+	$(NPM) run test
+
+test-watch-front:
+	$(NPM) run test:watch
+
+test-unit-front:
+	$(NPM) run test:unit
+
+test-integration-front:
+	$(NPM) run test:integration
+
+test-e2e-front:
+	$(NPM) run test:e2e
