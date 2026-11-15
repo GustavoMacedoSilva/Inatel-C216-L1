@@ -1,77 +1,72 @@
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
+from app.repositories import character_repository
 from app.schemas.character import CharacterCreate, CharacterLevelUpdate, CharacterUpdate
 
 
-characters = []
-next_id = 1
+class CharacterAlreadyExistsError(Exception):
+    """Raised when a character name is already registered."""
 
 
-def get_all_characters(race: str | None = None):
-    if race is None:
-        return characters
-
-    return [
-        character
-        for character in characters
-        if character["race"].lower() == race.lower()
-    ]
+def get_all_characters(db: Session, race: str | None = None):
+    return character_repository.get_all(db, race)
 
 
-def get_character(character_id: int):
-    for character in characters:
-        if character["id"] == character_id:
-            return character
-
-    return None
+def get_character(db: Session, character_id: int):
+    return character_repository.get_by_id(db, character_id)
 
 
-def create_character(character_data: CharacterCreate):
-    global next_id
+def create_character(db: Session, data: CharacterCreate):
+    if character_repository.get_by_name(db, data.name) is not None:
+        raise CharacterAlreadyExistsError
 
-    character = {
-        "id": next_id,
-        **character_data.model_dump(),
-    }
-
-    characters.append(character)
-    next_id += 1
-
-    return character
+    try:
+        return character_repository.create(db, data)
+    except IntegrityError as error:
+        db.rollback()
+        raise CharacterAlreadyExistsError from error
 
 
 def replace_character(
+    db: Session,
     character_id: int,
-    character_data: CharacterUpdate,
+    data: CharacterUpdate,
 ):
-    character = get_character(character_id)
+    character = character_repository.get_by_id(db, character_id)
 
     if character is None:
         return None
 
-    character.update(character_data.model_dump())
+    existing = character_repository.get_by_name(db, data.name)
+    if existing is not None and existing.id != character_id:
+        raise CharacterAlreadyExistsError
 
-    return character
+    try:
+        return character_repository.replace(db, character, data)
+    except IntegrityError as error:
+        db.rollback()
+        raise CharacterAlreadyExistsError from error
 
 
 def update_character_level(
+    db: Session,
     character_id: int,
-    level_data: CharacterLevelUpdate,
+    data: CharacterLevelUpdate,
 ):
-    character = get_character(character_id)
+    character = character_repository.get_by_id(db, character_id)
 
     if character is None:
         return None
 
-    character["level"] = level_data.level
-
-    return character
+    return character_repository.update_level(db, character, data.level)
 
 
-def delete_character(character_id: int):
-    character = get_character(character_id)
+def delete_character(db: Session, character_id: int):
+    character = character_repository.get_by_id(db, character_id)
 
     if character is None:
         return False
 
-    characters.remove(character)
-
+    character_repository.delete(db, character)
     return True

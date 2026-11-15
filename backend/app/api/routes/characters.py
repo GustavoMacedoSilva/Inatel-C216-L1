@@ -1,8 +1,15 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
 
-from app.schemas.character import CharacterCreate, CharacterLevelUpdate, CharacterResponse, CharacterUpdate
+from app.database.session import get_db
+from app.schemas.character import (
+    CharacterCreate,
+    CharacterLevelUpdate,
+    CharacterResponse,
+    CharacterUpdate,
+)
 from app.services import character_service
-
+from app.services.character_service import CharacterAlreadyExistsError
 
 router = APIRouter(
     prefix="/characters",
@@ -12,14 +19,15 @@ router = APIRouter(
 
 @router.get("/", response_model=list[CharacterResponse])
 def get_characters(
-    race: str | None = Query(default=None)
+    race: str | None = Query(default=None),
+    db: Session = Depends(get_db),
 ):
-    return character_service.get_all_characters(race)
+    return character_service.get_all_characters(db, race)
 
 
 @router.get("/{character_id}", response_model=CharacterResponse)
-def get_character(character_id: int):
-    character = character_service.get_character(character_id)
+def get_character(character_id: int, db: Session=Depends(get_db)):
+    character = character_service.get_character(db, character_id)
 
     if character is None:
         raise HTTPException(
@@ -35,8 +43,14 @@ def get_character(character_id: int):
     response_model=CharacterResponse,
     status_code=201,
 )
-def create_character(character: CharacterCreate):
-    return character_service.create_character(character)
+def create_character(character: CharacterCreate, db: Session = Depends(get_db)):
+    try:
+        return character_service.create_character(db, character)
+    except CharacterAlreadyExistsError:
+        raise HTTPException(
+            status_code=409,
+            detail="Já existente um personagem com esse nome",
+        ) from None
 
 
 @router.put(
@@ -46,11 +60,19 @@ def create_character(character: CharacterCreate):
 def replace_character(
     character_id: int,
     character: CharacterUpdate,
+    db: Session=Depends(get_db)
 ):
-    updated_character = character_service.replace_character(
-        character_id,
-        character,
-    )
+    try:
+        updated_character = character_service.replace_character(
+            db,
+            character_id,
+            character,
+        )
+    except CharacterAlreadyExistsError:
+        raise HTTPException(
+            status_code=409,
+            detail="Já existente um personagem com esse nome",
+        ) from None
 
     if updated_character is None:
         raise HTTPException(
@@ -68,8 +90,10 @@ def replace_character(
 def update_character_level(
     character_id: int,
     level: CharacterLevelUpdate,
+    db: Session=Depends(get_db)
 ):
     updated_character = character_service.update_character_level(
+        db,
         character_id,
         level,
     )
@@ -87,8 +111,8 @@ def update_character_level(
     "/{character_id}",
     status_code=204,
 )
-def delete_character(character_id: int):
-    deleted = character_service.delete_character(character_id)
+def delete_character(character_id: int, db: Session=Depends(get_db)):
+    deleted = character_service.delete_character(db, character_id)
 
     if not deleted:
         raise HTTPException(
