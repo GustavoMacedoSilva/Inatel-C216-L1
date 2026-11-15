@@ -1,73 +1,147 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
-test.describe("Cadastro de personagens - E2E", () => {
+const fillCharacterForm = async (page, name) => {
+  await page
+    .getByRole("button", {
+      name: "Criar personagem",
+      exact: true,
+    })
+    .click();
+
+  await page.getByLabel("Nome do personagem").fill(name);
+  await page.getByLabel("Raça").selectOption("Humano");
+  await page.getByLabel("Classe").selectOption("Paladino");
+};
+
+test.describe("Cadastro e listagem de personagens - E2E", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
   });
 
-  test("deve exibir a página de cadastro", async ({ page }) => {
+  test("deve exibir a interface de cadastro e as abas", async ({ page }) => {
     await expect(
-      page.getByRole("heading", {
-        name: "Taverna do Aventureiro",
+      page.getByRole("heading", { name: "Taverna do Aventureiro" }),
+    ).toBeVisible();
+
+    await expect(
+      page.getByRole("button", {
+        name: "Criar personagem",
+        exact: true,
       }),
     ).toBeVisible();
 
     await expect(
-      page.getByRole("heading", {
-        name: "Criar Personagem",
+      page.getByRole("button", {
+        name: "Personagens",
+        exact: true,
       }),
     ).toBeVisible();
 
     await expect(page.getByLabel("Nome do personagem")).toBeVisible();
-
-    await expect(page.getByLabel("Raça")).toBeVisible();
-
-    await expect(page.getByLabel("Classe")).toBeVisible();
   });
 
-  test("deve cadastrar um personagem corretamente", async ({ page }) => {
-    await page.getByLabel("Nome do personagem").fill("Arthas");
+  test("deve cadastrar e manter o personagem após recarregar a página", async ({
+    page,
+  }) => {
+    const characterName = `Arthas-${Date.now()}`;
 
-    await page.getByLabel("Raça").selectOption("Humano");
+    await fillCharacterForm(page, characterName);
 
-    await page.getByLabel("Classe").selectOption("Paladino");
-
-    // Verifica os valores antes do envio
-    await expect(page.getByLabel("Nome do personagem")).toHaveValue("Arthas");
-
-    await expect(page.getByLabel("Raça")).toHaveValue("Humano");
-
-    await expect(page.getByLabel("Classe")).toHaveValue("Paladino");
-
-    // Captura o alerta exibido pelo navegador
-    page.once("dialog", async (dialog) => {
-      expect(dialog.message()).toBe("Personagem criado com sucesso!");
-
-      await dialog.accept();
-    });
+    const createResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        response.url().includes("/characters/"),
+    );
 
     await page
       .getByRole("button", {
         name: "Criar Personagem",
+        exact: true,
       })
       .click();
 
-    // Verifica se os campos foram limpos
-    await expect(page.getByLabel("Nome do personagem")).toHaveValue("");
+    const created = await createResponse;
 
-    await expect(page.getByLabel("Raça")).toHaveValue("");
+    expect(created.status()).toBe(201);
 
-    await expect(page.getByLabel("Classe")).toHaveValue("");
+    expect(created.headers()["access-control-allow-origin"]).toBe(
+      "http://127.0.0.1:5174",
+    );
+
+    await expect(
+      page.getByRole("button", {
+        name: "Personagens",
+        exact: true,
+      }),
+    ).toHaveAttribute("aria-current", "page");
+
+    await expect(
+      page.getByRole("heading", { name: characterName }),
+    ).toBeVisible();
+
+    await page.reload();
+
+    await page
+      .getByRole("button", {
+        name: "Personagens",
+        exact: true,
+      })
+      .click();
+
+    await expect(
+      page.getByRole("heading", { name: characterName }),
+    ).toBeVisible();
+  });
+
+  test("deve impedir o cadastro de dois personagens com o mesmo nome", async ({
+    page,
+  }) => {
+    const characterName = `Duplicado-${Date.now()}`;
+
+    await fillCharacterForm(page, characterName);
+
+    await page
+      .getByRole("button", {
+        name: "Criar Personagem",
+        exact: true,
+      })
+      .click();
+
+    await expect(
+      page.getByRole("heading", { name: characterName }),
+    ).toBeVisible();
+
+    await page
+      .getByRole("button", {
+        name: "Criar personagem",
+        exact: true,
+      })
+      .click();
+
+    await page.getByLabel("Nome do personagem").fill(characterName);
+    await page.getByLabel("Raça").selectOption("Humano");
+    await page.getByLabel("Classe").selectOption("Paladino");
+
+    await page
+      .getByRole("button", {
+        name: "Criar Personagem",
+        exact: true,
+      })
+      .click();
+
+    await expect(page.getByRole("alert")).toHaveText(
+      "Já existente um personagem com esse nome",
+    );
   });
 
   test("não deve permitir cadastro com campos vazios", async ({ page }) => {
     await page
       .getByRole("button", {
         name: "Criar Personagem",
+        exact: true,
       })
       .click();
 
-    // O navegador deve impedir o envio por validação HTML
     await expect(page.getByLabel("Nome do personagem")).toBeFocused();
   });
 });

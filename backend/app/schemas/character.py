@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class CharacterCreate(BaseModel):
@@ -20,10 +20,10 @@ class CharacterLevelUpdate(BaseModel):
 
 
 class CharacterResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     race: str
     character_class: str
     level: int
-
-model_config = {"from_attributes": True}

@@ -9,6 +9,7 @@ from app.schemas.character import (
     CharacterUpdate,
 )
 from app.services import character_service
+from app.services.character_service import CharacterAlreadyExistsError
 
 router = APIRouter(
     prefix="/characters",
@@ -42,8 +43,14 @@ def get_character(character_id: int, db: Session=Depends(get_db)):
     response_model=CharacterResponse,
     status_code=201,
 )
-def create_character(character: CharacterCreate, db: Session=Depends(get_db)):
-    return character_service.create_character(db, character)
+def create_character(character: CharacterCreate, db: Session = Depends(get_db)):
+    try:
+        return character_service.create_character(db, character)
+    except CharacterAlreadyExistsError:
+        raise HTTPException(
+            status_code=409,
+            detail="Já existente um personagem com esse nome",
+        ) from None
 
 
 @router.put(
@@ -55,11 +62,17 @@ def replace_character(
     character: CharacterUpdate,
     db: Session=Depends(get_db)
 ):
-    updated_character = character_service.replace_character(
-        db,
-        character_id,
-        character,
-    )
+    try:
+        updated_character = character_service.replace_character(
+            db,
+            character_id,
+            character,
+        )
+    except CharacterAlreadyExistsError:
+        raise HTTPException(
+            status_code=409,
+            detail="Já existente um personagem com esse nome",
+        ) from None
 
     if updated_character is None:
         raise HTTPException(

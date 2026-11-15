@@ -8,7 +8,7 @@ export default defineConfig({
   reporter: "list",
 
   use: {
-    baseURL: "http://127.0.0.1:5173",
+    baseURL: "http://127.0.0.1:5174",
 
     headless: true,
 
@@ -16,10 +16,10 @@ export default defineConfig({
   },
 
   webServer: {
-    command: "npm run dev -- --host 127.0.0.1",
+    command: "npm run dev -- --host 127.0.0.1 --port 5174",
 
-    url: "http://127.0.0.1:5173",
+    url: "http://127.0.0.1:5174",
 
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: !process.env.CI && !process.env.VITE_API_URL,
   },
 });

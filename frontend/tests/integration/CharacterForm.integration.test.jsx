@@ -1,91 +1,134 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
 
 import CharacterForm from "../../src/components/CharacterForm";
 
-describe("CharacterForm - Testes de Integração", () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
+const createdCharacter = {
+  id: 1,
+  name: "Arthas",
+  race: "Humano",
+  character_class: "Paladino",
+  level: 1,
+};
 
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+describe("CharacterForm - integração com a API", () => {
   it("deve permitir preencher todos os campos", async () => {
     const user = userEvent.setup();
-
-    render(<CharacterForm />);
-
-    const nameInput = screen.getByLabelText("Nome do personagem");
-
-    const raceSelect = screen.getByLabelText("Raça");
-
-    const classSelect = screen.getByLabelText("Classe");
-
-    await user.type(nameInput, "Arthas");
-    await user.selectOptions(raceSelect, "Humano");
-    await user.selectOptions(classSelect, "Paladino");
-
-    expect(nameInput).toHaveValue("Arthas");
-    expect(raceSelect).toHaveValue("Humano");
-    expect(classSelect).toHaveValue("Paladino");
-  });
-
-  it("deve cadastrar um personagem com nível inicial 1", async () => {
-    const user = userEvent.setup();
-
-    const alertMock = vi.spyOn(window, "alert").mockImplementation(() => {});
-
-    const consoleMock = vi.spyOn(console, "log").mockImplementation(() => {});
-
     render(<CharacterForm />);
 
     await user.type(screen.getByLabelText("Nome do personagem"), "Arthas");
-
     await user.selectOptions(screen.getByLabelText("Raça"), "Humano");
-
     await user.selectOptions(screen.getByLabelText("Classe"), "Paladino");
 
-    await user.click(
-      screen.getByRole("button", {
-        name: "Criar Personagem",
-      }),
-    );
-
-    expect(alertMock).toHaveBeenCalledWith("Personagem criado com sucesso!");
-
-    expect(consoleMock).toHaveBeenCalledWith("Personagem criado:", {
-      name: "Arthas",
-      race: "Humano",
-      character_class: "Paladino",
-      level: 1,
-    });
+    expect(screen.getByLabelText("Nome do personagem")).toHaveValue("Arthas");
+    expect(screen.getByLabelText("Raça")).toHaveValue("Humano");
+    expect(screen.getByLabelText("Classe")).toHaveValue("Paladino");
   });
 
-  it("deve limpar os campos após cadastrar o personagem", async () => {
+  it("deve enviar o personagem para a API e limpar o formulário", async () => {
     const user = userEvent.setup();
-
-    vi.spyOn(window, "alert").mockImplementation(() => {});
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => createdCharacter,
+    });
+    vi.stubGlobal("fetch", fetchMock);
 
     render(<CharacterForm />);
+    await user.type(screen.getByLabelText("Nome do personagem"), "Arthas");
+    await user.selectOptions(screen.getByLabelText("Raça"), "Humano");
+    await user.selectOptions(screen.getByLabelText("Classe"), "Paladino");
+    await user.click(screen.getByRole("button", { name: "Criar Personagem" }));
 
-    const nameInput = screen.getByLabelText("Nome do personagem");
+    await screen.findByRole("status");
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Personagem criado com sucesso!",
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8000/characters/",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "Arthas",
+          race: "Humano",
+          character_class: "Paladino",
+          level: 1,
+        }),
+      },
+    );
+    expect(screen.getByLabelText("Nome do personagem")).toHaveValue("");
+    expect(screen.getByLabelText("Raça")).toHaveValue("");
+    expect(screen.getByLabelText("Classe")).toHaveValue("");
+  });
 
-    const raceSelect = screen.getByLabelText("Raça");
+  it("deve apresentar o estado de carregamento durante o envio", async () => {
+    const user = userEvent.setup();
+    let resolveFetch;
+    const fetchMock = vi.fn(
+      () =>
+        new Promise((resolve) => {
+          resolveFetch = resolve;
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
 
-    const classSelect = screen.getByLabelText("Classe");
+    render(<CharacterForm />);
+    await user.type(screen.getByLabelText("Nome do personagem"), "Arthas");
+    await user.selectOptions(screen.getByLabelText("Raça"), "Humano");
+    await user.selectOptions(screen.getByLabelText("Classe"), "Paladino");
+    await user.click(screen.getByRole("button", { name: "Criar Personagem" }));
 
-    await user.type(nameInput, "Arthas");
-    await user.selectOptions(raceSelect, "Humano");
-    await user.selectOptions(classSelect, "Paladino");
+    expect(screen.getByRole("button", { name: "Criando..." })).toBeDisabled();
 
-    await user.click(
-      screen.getByRole("button", {
-        name: "Criar Personagem",
+    resolveFetch({ ok: true, json: async () => createdCharacter });
+    await screen.findByText("Personagem criado com sucesso!");
+  });
+
+  it("deve exibir a mensagem enviada pela API quando o nome já existe", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        json: async () => ({
+          detail: "Já existente um personagem com esse nome",
+        }),
       }),
     );
 
-    expect(nameInput).toHaveValue("");
-    expect(raceSelect).toHaveValue("");
-    expect(classSelect).toHaveValue("");
+    render(<CharacterForm />);
+    await user.type(screen.getByLabelText("Nome do personagem"), "Arthas");
+    await user.selectOptions(screen.getByLabelText("Raça"), "Humano");
+    await user.selectOptions(screen.getByLabelText("Classe"), "Paladino");
+    await user.click(screen.getByRole("button", { name: "Criar Personagem" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Já existente um personagem com esse nome",
+    );
+    expect(screen.getByLabelText("Nome do personagem")).toHaveValue("Arthas");
+  });
+
+  it("deve exibir um erro de rede", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValue(new Error("API indisponível")),
+    );
+
+    render(<CharacterForm />);
+    await user.type(screen.getByLabelText("Nome do personagem"), "Arthas");
+    await user.selectOptions(screen.getByLabelText("Raça"), "Humano");
+    await user.selectOptions(screen.getByLabelText("Classe"), "Paladino");
+    await user.click(screen.getByRole("button", { name: "Criar Personagem" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "API indisponível",
+    );
   });
 });

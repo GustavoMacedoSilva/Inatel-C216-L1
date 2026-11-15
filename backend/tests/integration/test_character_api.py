@@ -207,3 +207,37 @@ def test_delete_character_not_found(client):
     response = client.delete("/characters/999999999")
 
     assert response.status_code == 404
+
+
+def test_create_character_with_duplicate_name_returns_conflict(client):
+    payload = {
+        "name": "Aragorn",
+        "race": "Human",
+        "character_class": "Ranger",
+        "level": 1,
+    }
+
+    first_response = client.post("/characters/", json=payload)
+    second_response = client.post("/characters/", json=payload)
+
+    assert first_response.status_code == 201
+    assert second_response.status_code == 409
+    assert second_response.json()["detail"] == (
+        "Já existente um personagem com esse nome"
+    )
+
+
+def test_cors_preflight_for_frontend_origin(client):
+    response = client.options(
+        "/characters/",
+        headers={
+            "Origin": "http://localhost:5173",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == (
+        "http://localhost:5173"
+    )

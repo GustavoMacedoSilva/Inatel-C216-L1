@@ -18,6 +18,11 @@ def get_by_id(db: Session, character_id: int):
     return db.get(Character, character_id)
 
 
+def get_by_name(db: Session, name: str):
+    statement = select(Character).where(Character.name == name)
+    return db.scalar(statement)
+
+
 def create(db: Session, data: CharacterCreate):
     character = Character(**data.model_dump())
 

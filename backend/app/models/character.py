@@ -1,4 +1,4 @@
-from sqlalchemy import Integer, String
+from sqlalchemy import Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.base import Base
@@ -6,6 +6,9 @@ from app.database.base import Base
 
 class Character(Base):
     __tablename__ = "characters"
+    __table_args__ = (
+        UniqueConstraint("name", name="uq_characters_name"),
+    )
 
     id: Mapped[int] = mapped_column(
         Integer,

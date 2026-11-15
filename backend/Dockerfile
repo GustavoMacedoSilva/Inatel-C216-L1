@@ -11,6 +11,7 @@ RUN poetry config virtualenvs.create false \
 
 COPY app/ ./app/
 COPY tests/ ./tests/
+COPY scripts/ ./scripts/
 COPY alembic/ ./alembic/
 COPY alembic.ini ./
 

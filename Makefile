@@ -1,32 +1,25 @@
-.PHONY: hello help test_enviroment build up down restart logs test lint format clean install
+.PHONY: help hello test lint format build up up-build down restart logs clean ps \
+        db-upgrade db-current frontend-install frontend-dev frontend-test \
+        frontend-check frontend-build frontend-lint frontend-format e2e check-all \
+        test-front lint-front format-front format-check-front test-watch-front \
+        test-unit-front test-integration-front test-e2e-front test_enviroment
 
 POETRY_RUN := poetry -C backend run
 FRONTEND_DIR := frontend
-NPM := npm  --prefix $(FRONTEND_DIR)
+NPM := npm --prefix $(FRONTEND_DIR)
 
 help:
-	@echo "Comandos:"
-	@echo "make test_enviroment	- mostra as versoes das bibliotecas/frameworks instalados"
-	@echo "make hello - fala oi"
-	@echo "install" instala as dependencias do projeto
-	@echo "test" - roda os testes
-	@echo "build" - faz a build do docker
-	@echo "up" - levanta o docker
-	@echo "down" - derruba o docker
-	@echo "restart" - restarta o docker
-	@echo "logs" - pega os logs do docker
-	@echo "clean" - derruba e limpa o docker
-	@echo "lint" - verifica problemas de estilo com Ruff
-	@echo "make frontend-install - instala dependencias do frontend"
-	@echo "make frontend-dev - inicia servidor React"
-	@echo "make lint-front - verifica codigo"
-	@echo "make format-front - formata codigo"
-	@echo "make format-check-front - verifica formatacao"
-	@echo "make test-front - executa todos os testes"
-	@echo "make test-watch-front - executa Vitest em watch mode"
-	@echo "make test-unit-front - executa testes unitarios"
-	@echo "make test-integration-front - executa testes de integracao"
-	@echo "make test-e2e-front - executa testes Playwright"
+	@echo "Comandos principais:"
+	@echo "  make up-build       - constroi e sobe db, api e frontend"
+	@echo "  make ps             - mostra status e health dos containers"
+	@echo "  make db-upgrade     - aplica migrations Alembic"
+	@echo "  make db-current     - mostra a revisao atual do banco"
+	@echo "  make test           - executa testes do backend"
+	@echo "  make frontend-test  - executa testes Vitest"
+	@echo "  make frontend-check - executa lint e format check com Biome"
+	@echo "  make frontend-build - gera build de producao"
+	@echo "  make e2e            - executa Playwright com ambiente lab-e2e isolado"
+	@echo "  make check-all      - executa todas as validacoes"
 
 hello:
 	@echo "Ola, Sistemas Distribuidos!"
@@ -40,16 +33,24 @@ install:
 	poetry -C backend install --no-interaction
 
 test:
-	docker compose run --rm api pytest
+	docker compose up -d --wait db
+	docker compose run --build --rm api python scripts/ensure_test_db.py
+	docker compose run --build --rm api pytest
 
 lint:
 	$(POETRY_RUN) ruff check .
+
+format:
+	$(POETRY_RUN) ruff format .
 
 build:
 	docker compose build
 
 up:
 	docker compose up -d
+
+up-build:
+	docker compose up -d --build --wait
 
 down:
 	docker compose down
@@ -61,9 +62,17 @@ restart:
 logs:
 	docker compose logs -f
 
+ps:
+	docker compose ps
+
+db-upgrade:
+	docker compose exec -T api alembic upgrade head
+
+db-current:
+	docker compose exec -T api alembic current
+
 clean:
 	docker compose down
-
 
 frontend-install:
 	$(NPM) install
@@ -71,17 +80,27 @@ frontend-install:
 frontend-dev:
 	$(NPM) run dev
 
-lint-front:
+frontend-test:
+	$(NPM) run test
+
+frontend-check:
+	$(NPM) run check
+
+frontend-build:
+	$(NPM) run build
+
+frontend-lint:
 	$(NPM) run lint
 
-format-front:
+frontend-format:
 	$(NPM) run format
 
+# Mantem compatibilidade com os nomes de comandos anteriores.
+test-front: frontend-test
+lint-front: frontend-lint
+format-front: frontend-format
 format-check-front:
 	$(NPM) run format:check
-
-test-front:
-	$(NPM) run test
 
 test-watch-front:
 	$(NPM) run test:watch
@@ -92,5 +111,15 @@ test-unit-front:
 test-integration-front:
 	$(NPM) run test:integration
 
-test-e2e-front:
-	$(NPM) run test:e2e
+test-e2e-front: e2e
+
+e2e:
+	python scripts/run_e2e.py
+
+check-all:
+	$(MAKE) test
+	$(MAKE) lint
+	$(MAKE) frontend-test
+	$(MAKE) frontend-check
+	$(MAKE) frontend-build
+	$(MAKE) e2e
