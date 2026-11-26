@@ -1,0 +1,66 @@
+
+name: Backend CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: estante
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: estante_pessoal
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U estante -d estante_pessoal"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      POSTGRES_USER: estante
+      POSTGRES_PASSWORD: test_password
+      POSTGRES_DB: estante_pessoal
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 5432
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: "2.5.1"
+
+      - name: Install dependencies
+        working-directory: backend
+        run: poetry install --with dev --no-root
+
+      - name: Create test database
+        run: |
+          docker exec "${{ job.services.postgres.id }}" \
+            psql -U estante -d postgres \
+            -c "CREATE DATABASE estante_pessoal_test OWNER estante;"
+
+      - name: Run Ruff
+        working-directory: backend
+        run: |
+          poetry run ruff check .
+          poetry run ruff format --check .
+
+      - name: Run tests
+        working-directory: backend
+        run: poetry run pytest --cov=app --cov-report=term-missing
