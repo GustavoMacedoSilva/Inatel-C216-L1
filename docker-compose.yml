@@ -1,4 +1,3 @@
-
 services:
   db:
     image: postgres:17-alpine
@@ -30,6 +29,16 @@ services:
     depends_on:
       db:
         condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: estante-pessoal-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      - api
 
 volumes:
   postgres_data:

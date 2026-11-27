@@ -1,5 +1,7 @@
 .PHONY: help install run test test-unit test-integration lint format format-check check \
-        migrate migration downgrade api-build api-up api-logs api-stop
+        migrate migration downgrade api-build api-up api-logs api-stop \
+		frontend-install frontend-dev frontend-build frontend-logs frontend-stop \
+        docker-build docker-up docker-down docker-logs docker-ps docker-restart
 
 help:
 	@echo "EstantePessoal - Backend Commands"
@@ -20,6 +22,19 @@ help:
 	@echo "  make api-up - Inicia API e banco pelo Docker"
 	@echo "  make api-logs - Exibe logs da API"
 	@echo "  make api-stop - Para somente a API"
+	@echo "EstantePessoal - Frontend Commands:"
+	@echo "  frontend-install - Instala as dependências do frontend"
+	@echo "  frontend-dev - Inicia o Vite localmente"
+	@echo "  frontend-build - Constrói a imagem do frontend"
+	@echo "  frontend-logs - Exibe os logs do frontend"
+	@echo "  frontend-stop - Para o frontend"
+	@echo "Docker Compose:"
+	@echo "  docker-build - Constrói todas as imagens"
+	@echo "  docker-up - Inicia toda a aplicação"
+	@echo "  docker-down  - Para e remove os containers"
+	@echo "  docker-logs - Exibe os logs dos serviços"
+	@echo "  docker-ps - Mostra o estado dos containers"
+	@echo "  docker-restart - Reinicia os serviços"
 
 install:
 	cd backend && poetry install --with dev
@@ -68,3 +83,37 @@ api-logs:
 
 api-stop:
 	docker compose stop api
+
+frontend-install:
+	cd frontend && npm ci
+
+frontend-dev:
+	cd frontend && npm run dev
+
+frontend-build:
+	docker compose build frontend
+
+frontend-logs:
+	docker compose logs -f frontend
+
+frontend-stop:
+	docker compose stop frontend
+
+docker-build:
+	docker compose build
+
+docker-up:
+	docker compose up -d --build
+
+docker-down:
+	docker compose down
+
+docker-logs:
+	docker compose logs -f
+
+docker-ps:
+	docker compose ps
+
+docker-restart:
+	docker compose restart
+
