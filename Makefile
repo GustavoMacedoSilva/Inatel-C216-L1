@@ -1,7 +1,9 @@
 .PHONY: help install run test test-unit test-integration lint format format-check check \
         migrate migration downgrade api-build api-up api-logs api-stop \
 		frontend-install frontend-dev frontend-build frontend-logs frontend-stop \
-        docker-build docker-up docker-down docker-logs docker-ps docker-restart
+        docker-build docker-up docker-down docker-logs docker-ps docker-restart \
+		frontend-test frontend-test-unit frontend-test-integration \
+        frontend-test-e2e frontend-check frontend-format frontend-build-check
 
 help:
 	@echo "EstantePessoal - Backend Commands"
@@ -28,6 +30,14 @@ help:
 	@echo "  frontend-build - Constrói a imagem do frontend"
 	@echo "  frontend-logs - Exibe os logs do frontend"
 	@echo "  frontend-stop - Para o frontend"
+	@echo "Frontend - Tests:"
+	@echo "  frontend-test - Executa todos os testes"
+	@echo "  frontend-test-unit - Executa testes unitários"
+	@echo "  frontend-test-integration - Executa testes de integração"
+	@echo "  frontend-test-e2e - Executa testes E2E"
+	@echo "  frontend-check - Verifica código com Biome"
+	@echo "  frontend-format - Formata código com Biome"
+	@echo "  frontend-build-check - Verifica o build de produção"
 	@echo "Docker Compose:"
 	@echo "  docker-build - Constrói todas as imagens"
 	@echo "  docker-up - Inicia toda a aplicação"
@@ -89,6 +99,27 @@ frontend-install:
 
 frontend-dev:
 	cd frontend && npm run dev
+
+frontend-test:
+	cd frontend && npm test
+
+frontend-test-unit:
+	cd frontend && npm run test:unit
+
+frontend-test-integration:
+	cd frontend && npm run test:integration
+
+frontend-test-e2e:
+	cd frontend && npm run test:e2e
+
+frontend-check:
+	cd frontend && npm run check
+
+frontend-format:
+	cd frontend && npm run format
+
+frontend-build-check:
+	cd frontend && npm run build
 
 frontend-build:
 	docker compose build frontend

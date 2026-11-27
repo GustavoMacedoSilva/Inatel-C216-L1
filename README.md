@@ -272,6 +272,9 @@ npm run test:integration
 
 # Testes end-to-end
 npm run test:e2e
+
+# Rodar os testes de integração e unitários
+make frontend-test
 ```
 
 Os testes E2E utilizam Playwright e verificam fluxos completos da aplicação, incluindo cadastro, edição, persistência e exclusão de livros.
