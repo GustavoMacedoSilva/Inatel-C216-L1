@@ -8,6 +8,9 @@ Inatel-C216-L1
 
 Aplicação web para gerenciamento de uma biblioteca pessoal, permitindo cadastrar livros, acompanhar o progresso de leitura e organizar a coleção de maneira simples.
 
+
+Link do Vídeo de Apresentação: https://youtu.be/Y4QBZ9xPaqM
+
 ## Funcionalidades
 
 - Cadastro de livros.
